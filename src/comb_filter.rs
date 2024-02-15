@@ -1,15 +1,11 @@
-use std::iter::Filter;
-
 pub struct CombFilter {
-    // TODO: your code here
     filter_type: FilterType,
-    gain: f32,
-    delay_m: usize,
     sample_rate_hz: f32,
     num_channels: usize,
-    buffer: Vec<f32>,
-    buffer_index: usize,
-    
+    gain: f32,
+    delay_secs: f32,
+    delay_samples: usize,
+    delay_buffers: Vec<Vec<f32>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -26,65 +22,89 @@ pub enum FilterParam {
 
 #[derive(Debug, Clone)]
 pub enum Error {
-    InvalidValue { param: FilterParam, value: f32 }
+    InvalidValue { param: FilterParam, value: f32 },
 }
 
 impl CombFilter {
     pub fn new(filter_type: FilterType, max_delay_secs: f32, sample_rate_hz: f32, num_channels: usize) -> Self {
-        let delay_m = (max_delay_secs*sample_rate_hz) as usize;
-        CombFilter { filter_type: (filter_type), gain: (0.0), delay_m: (delay_m), sample_rate_hz: (sample_rate_hz), num_channels: (num_channels), buffer: vec![0.0; delay_m], buffer_index: 0, }
-    }
-
-    pub fn reset(&mut self) {
-        self.buffer.fill(0.0);
-        self.buffer_index = 0;
+        let delay_samples = (sample_rate_hz * max_delay_secs) as usize;
+        let delay_buffers = vec![vec![0.0; delay_samples]; num_channels];
         
-    }
-
-    pub fn process(&mut self, input: &[&[f32]], output: &mut [&mut [f32]]) {
-        match self.filter_type {
-            FilterType::FIR => self.fir(input, output),
-            FilterType::IIR => self.iir(input, output),
+        CombFilter {
+            filter_type,
+            sample_rate_hz,
+            num_channels,
+            gain: 0.0, 
+            delay_secs: max_delay_secs,
+            delay_samples,
+            delay_buffers,
         }
     }
 
-    fn fir(&mut self, input: &[f32], output: &mut [f32]) {
-
+    pub fn reset(&mut self) {
+        for buffer in &mut self.delay_buffers {
+            buffer.fill(0.0);
+        }
     }
 
-    fn iir(&mut self, input: &[f32], output: &mut [f32]) {
-        
+    pub fn process(&mut self, input: &[&[f32]], output: &mut [&mut [f32]]) {
+        for (channel_idx, channel_buffers) in input.iter().enumerate() {
+            let delay_buffer = &mut self.delay_buffers[channel_idx];
+            let mut read_idx = self.delay_samples % delay_buffer.len(); 
+
+            for (sample_idx, &input_sample) in channel_buffers.iter().enumerate() {
+
+                let output_sample = match self.filter_type {
+                    FilterType::FIR => {
+
+                        input_sample + delay_buffer[read_idx] * self.gain
+                    },
+                    FilterType::IIR => {
+
+                        input_sample + delay_buffer[read_idx] * self.gain
+                    },
+                };
+
+                delay_buffer[read_idx] = match self.filter_type {
+                    FilterType::FIR => input_sample,
+                    FilterType::IIR => output_sample,
+                };
+    
+                output[channel_idx][sample_idx] = output_sample;
+
+
+                read_idx = (read_idx + 1) % delay_buffer.len();
+            }
+        }
     }
 
     pub fn set_param(&mut self, param: FilterParam, value: f32) -> Result<(), Error> {
         match param {
-            FilterParam::Delay => {
-                let delay_m = (value * self.sample_rate_hz) as usize;
-                if delay_m > self.buffer.len() {
-                    Err(Error::InvalidValue { param: (FilterParam::Delay), value: (value) })
-                } else {
-                    self.delay_m = delay_m;
-                    Ok(())
-                }
-
-            }
             FilterParam::Gain => {
                 self.gain = value;
                 Ok(())
-            }
+            },
+            FilterParam::Delay => {
+                self.delay_secs = value;
+                let delay_samples = (self.sample_rate_hz * value) as usize;
+                
+                if delay_samples > self.delay_samples {
+                    Err(Error::InvalidValue { param: (FilterParam::Delay), value: (value) })
+                } else {
+                    self.delay_samples = (self.sample_rate_hz * self.delay_secs) as usize;
+                    Ok(())
+                }
+                
+            },
         }
     }
 
     pub fn get_param(&self, param: FilterParam) -> f32 {
         match param {
-
             FilterParam::Gain => self.gain,
-            FilterParam::Delay => self.delay_m as f32 / self.sample_rate_hz,
-
+            FilterParam::Delay => self.delay_secs,
         }
     }
-
-    // TODO: feel free to define other functions for your own use
+        // TODO: feel free to define other functions for your own use
 }
-
 // TODO: feel free to define other types (here or in other modules) for your own use
