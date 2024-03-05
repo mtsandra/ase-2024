@@ -68,8 +68,8 @@ fn main() {
             let mut processed_channel_samples = vec![0f32; channel_samples.len()];
             comb_filter.process(&[&channel_samples], &mut [&mut processed_channel_samples]);
     
-            for (i, &sample) in processed_channel_samples.iter().enumerate() {
-                processed_samples[i * channels + channel] = sample;
+            for (i, &samples) in processed_channel_samples.iter().enumerate() {
+                processed_samples[i * channels + channel] = samples;
             }
         }
         for &sample in &processed_samples {
