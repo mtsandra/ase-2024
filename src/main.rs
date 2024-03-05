@@ -58,7 +58,7 @@ fn main() {
         let block_samples_f32: Vec<f32> = block.iter().map(|&s| s as f32 / i16::MAX as f32).collect();
     
         for channel in 0..channels {
-            let mut channel_samples = Vec::with_capacity(block.len() / channels);
+            let mut channel_samples = Vec::with_capacity(block_size);
             for (i, sample) in block_samples_f32.iter().enumerate() {
                 if i % channels == channel {
                     channel_samples.push(*sample);
