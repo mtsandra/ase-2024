@@ -6,6 +6,7 @@ pub struct RingBuffer<T> {
 
 impl<T: Copy + Default> RingBuffer<T> {
     /// Create a new ring buffer with a given capacity.
+    /// * `capacity` - The capacity of the ring buffer.
     pub fn new(capacity: usize) -> Self {
         RingBuffer {
             buffer: vec![T::default(); capacity],
@@ -20,7 +21,7 @@ impl<T: Copy + Default> RingBuffer<T> {
         self.tail = 0;
     }
     /// `put` and `peek` write/read without advancing the indices.
-    // `put` and `peek` write/read without advancing the indices.
+
     pub fn put(&mut self, value: T) {
         self.buffer[self.head] = value
     }
@@ -33,7 +34,7 @@ impl<T: Copy + Default> RingBuffer<T> {
         self.buffer[(self.tail + offset) % self.capacity()]
     }
     /// `push` and `pop` write/read and advance the indices.
-    // `push` and `pop` write/read and advance the indices.
+
     pub fn push(&mut self, value: T) {
         self.buffer[self.head] = value;
         self.head = (self.head + 1) % self.capacity();
@@ -80,10 +81,12 @@ impl<T: Copy + Default> RingBuffer<T> {
 
 impl RingBuffer<f32> {
     /// Return the value at an offset from the current read index.
-    // Return the value at at an offset from the current read index.
+
     // To handle fractional offsets, linearly interpolate between adjacent values. 
     pub fn get_frac(&self, offset: f32) -> f32 {
-
+        if offset == 0.0 {
+            self.get(0);
+        }
         let floor = offset.trunc();
         let floor_s = self.get(floor as usize);
         let ceil_s = self.get(floor as usize + 1);

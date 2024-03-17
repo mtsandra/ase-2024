@@ -15,6 +15,13 @@ pub struct Vibrato {
 
 impl Vibrato {
     /// Create a new vibrato processor with a given sample rate, maximum delay, delay, width, frequency, and number of channels.
+    /// # Arguments
+    /// * `sample_rate` - The sample rate of the audio data.
+    /// * `max_delay` - The maximum delay of the vibrato effect.
+    /// * `delay` - The delay of the vibrato effect.
+    /// * `width` - The width of the vibrato effect.
+    /// * `frequency` - The frequency of the vibrato effect.
+    /// * `channels` - The number of channels of the audio data.
     pub fn new(sample_rate: f32, max_delay: f32, delay: f32, width: f32, frequency: f32, channels: usize) -> Vibrato {
         // throw an error if width is bigger than max_delay
         if width > max_delay {
@@ -68,8 +75,7 @@ impl Vibrato {
         }
     }
     /// Set the parameters of the vibrato processor.
-    pub fn set_param(&mut self, sample_rate: f32, delay: f32, width: f32, frequency: f32) {
-        self.sample_rate = sample_rate;
+    pub fn set_params(&mut self, delay: f32, width: f32, frequency: f32) {
         self.delay = (delay * self.sample_rate).round();
         self.width = (width * self.sample_rate).round();
         self.lfo.set_frequency(frequency);
