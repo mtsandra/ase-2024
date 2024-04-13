@@ -1,8 +1,7 @@
-extern crate hound;
+use std::{fs::File, io::Write};
 
-use std::env;
-use std::fs::File;
-use std::io::Write;
+mod ring_buffer;
+mod fast_convolver;
 
 fn show_info() {
     eprintln!("MUSI-6106 Assignment Executable");
@@ -10,34 +9,24 @@ fn show_info() {
 }
 
 fn main() {
-    show_info();
+   show_info();
+
     // Parse command line arguments
-    // First argument is input .wav file, second argument is output text file.
-    // TODO: your code here
-    let args: Vec<String> = env::args().collect();
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() < 3 {
+        eprintln!("Usage: {} <input wave filename> <output text filename>", args[0]);
+        return
+    }
 
-    let wav_path = &args[1];
-    let txt_path = &args[2];
-    // Open the input wave file and determine number of channels
-    // TODO: your code here; see `hound::WavReader::open`.
+    // Open the input wave file
+    let mut reader = hound::WavReader::open(&args[1]).unwrap();
+    let spec = reader.spec();
+    let channels = spec.channels;
+
     // Read audio data and write it to the output text file (one column per channel)
-    // TODO: your code here; we suggest using `hound::WavReader::samples`, `File::create`, and `write!`.
-    //       Remember to convert the samples to floating point values and respect the number of channels!
-    let mut reader = hound::WavReader::open(wav_path).expect("Cannot open wav file");
-
-    let mut output_file = File::create(txt_path).expect("Cannot create text file");
-
-
-    let samples: Vec<f32> = reader.samples::<i16>()
-        .filter_map(Result::ok)
-        .map(|s| s as f32 / i16::MAX as f32)
-        .collect();
-
-    for sample in samples.chunks(2) {
-        if let [left, right] = *sample {
-            writeln!(output_file, "{} {}", left, right).expect("Cannot save text file");
-        }
+    let mut out = File::create(&args[2]).expect("Unable to create file");
+    for (i, sample) in reader.samples::<i16>().enumerate() {
+        let sample = sample.unwrap() as f32 / (1 << 15) as f32;
+        write!(out, "{}{}", sample, if i % channels as usize == (channels - 1).into() { "\n" } else { " " }).unwrap();
     }
 }
-
-
