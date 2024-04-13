@@ -12,6 +12,7 @@ use cpal::{FromSample, SampleRate, SizedSample, Stream};
 pub struct State {
     stream: Stream,
     // filter: Arc<Mutex<CombFilter>>,
+    filter: CombFilter,
 }
 
 fn run<T>(device: &cpal::Device, config: &cpal::StreamConfig) -> State
@@ -22,6 +23,7 @@ where
     let channels = config.channels as usize;
 
     // TODO: Setup and initialize your comb filter.
+    let comb_filter = CombFilter::new(FilterType::FIR, 0.1, sample_rate, channels);
     let mut t = 0f32;
 
     let mut blips = move || {
@@ -38,9 +40,13 @@ where
 
     let mut next_value = {
         move || {
-            let sample = blips();
+            let mut sample = blips();
+            //console_log!("sample: {}", sample);
             // TODO: Process this with a comb filter.
-            sample
+
+            let mut output_sample = &[&[0.0_f32]];
+            comb_filter.process(&[&[sample]], output_sample);
+            output_sample
         }
     };
 
