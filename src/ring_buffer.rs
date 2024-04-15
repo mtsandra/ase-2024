@@ -73,6 +73,10 @@ impl<T: Copy + Default> RingBuffer<T> {
         // Return the size of the internal buffer.
         self.buffer.len()
     }
+
+    pub fn set(&mut self, index: usize, value: T) {
+        self.buffer[index] = value;
+    }
 }
 
 #[cfg(test)]
