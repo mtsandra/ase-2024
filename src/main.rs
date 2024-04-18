@@ -93,7 +93,7 @@ mod tests {
     }
 
     #[test]
-    fn test_identity() {
+    fn test_identity_time() {
         let impulse_response = generate_random_impulse_response(51);
         let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::TimeDomain);
         let mut input = vec![0.0; 10];
@@ -108,7 +108,7 @@ mod tests {
     }
 
     #[test]
-    fn test_flush() {
+    fn test_flush_time() {
         let impulse_response = generate_random_impulse_response(51);
         let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::TimeDomain);
         let mut input = vec![0.0; 10];
@@ -128,7 +128,7 @@ mod tests {
     }
 
     #[test]
-    fn test_blocksize() {
+    fn test_blocksize_time() {
         let impulse_response = generate_random_impulse_response(51);
         let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::TimeDomain);
         let mut input = vec![0.0; 10];
@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn test_overlap_add(){
+    fn test_overlap_add_time(){
         let impulse_response = generate_random_impulse_response(51);
         let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::TimeDomain);
         let mut input = vec![0.0; 10];
@@ -166,4 +166,75 @@ mod tests {
             assert_eq!(full_output[i], if i >= 3 { impulse_response[i - 3] } else { 0.0 });
         }
     }
+
+
+    #[test]
+    fn test_identity_freq() {
+        let impulse_response = generate_random_impulse_response(52);
+        let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::FrequencyDomain{block_size: 2});
+        let mut input = vec![0.0; 10];
+        let epsilon = 1e-5;
+        println!("impulse r {:?} ", impulse_response);
+        input[3] = 1.0; // Impulse at index 3
+        let mut output = vec![0.0; 10];
+        convolver.process(&input, &mut output);
+        println!("output {:?} ", output);
+
+        // Check the output against the impulse response
+        for i in 0..10 {
+            assert!(
+                (output[i] - if i >= 3 { impulse_response[i - 3] } else { 0.0 }).abs() <= epsilon,
+                "Values at index {} are not within epsilon: {} != {}", 
+                i, 
+                output[i], 
+                if i >= 3 { impulse_response[i - 3] } else { 0.0 }
+            );
+        }
+    }
+
+    #[test]
+    fn test_flush_freq() {
+        let impulse_response = generate_random_impulse_response(51);
+        let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::FrequencyDomain{block_size: 8});
+        let mut input = vec![0.0; 10];
+        input[3] = 1.0; // Impulse at index 3
+        let mut output = vec![0.0; 10];
+        convolver.process(&input, &mut output);
+        let mut tail = vec![0.0; 50]; // Buffer to catch the reverb tail
+        convolver.flush(&mut tail);
+
+        // Validate the reverb tail
+        for i in 0..44 { 
+            assert_eq!(tail[i], impulse_response[output.len()-3+i]);
+        }
+        for i in 45..50 { 
+            assert_eq!(tail[i], 0.0);
+        }
+    }
+
+    #[test]
+    fn test_blocksize_freq() {
+        let impulse_response = generate_random_impulse_response(51);
+        let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::FrequencyDomain{block_size: 8});
+        let mut input = vec![0.0; 10];
+        input[3] = 1.0; 
+        let block_sizes = [1, 13, 1023, 2048, 1, 17, 5000, 1897];
+        let mut output_full = vec![0.0; 10000];
+
+        for &block_size in &block_sizes {
+            for (i, chunk) in input.chunks(block_size).enumerate() {
+                let mut output = vec![0.0; chunk.len()];
+                convolver.process(chunk, &mut output);
+                for (j, &sample) in output.iter().enumerate() {
+                    output_full[i * block_size + j] = sample;
+                }
+            }
+        }
+
+        // Check the output against the impulse response
+        for i in 0..10 {
+            assert_eq!(output_full[i], if i >= 3 { impulse_response[i - 3] } else { 0.0 });
+        }
+    }
+
 }
