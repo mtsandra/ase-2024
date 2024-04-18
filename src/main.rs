@@ -79,6 +79,9 @@ fn load_impulse_response(filename: &str) -> Vec<f32> {
 }
 
 
+
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -146,6 +149,21 @@ mod tests {
         // Check the output against the impulse response
         for i in 0..10 {
             assert_eq!(output_full[i], if i >= 3 { impulse_response[i - 3] } else { 0.0 });
+        }
+    }
+
+    #[test]
+    fn test_overlap_add(){
+        let impulse_response = generate_random_impulse_response(51);
+        let mut convolver = FastConvolver::new(&impulse_response, ConvolutionMode::TimeDomain);
+        let mut input = vec![0.0; 10];
+        input[3] = 1.0; // Impulse at index 3
+        let mut output = vec![0.0; 10];
+        let block_size = 5;
+        let full_output = convolver.overlap_add(&input, &mut output, block_size);
+        // Check the output against the impulse response
+        for i in 0..10 {
+            assert_eq!(full_output[i], if i >= 3 { impulse_response[i - 3] } else { 0.0 });
         }
     }
 }
